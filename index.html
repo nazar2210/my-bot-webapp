@@ -189,6 +189,78 @@
         .success {
             background: #28a745 !important;
         }
+        
+        .referral-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .referral-item {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .referral-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .referral-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+        
+        .referral-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .referral-details {
+            flex: 1;
+        }
+        
+        .referral-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .referral-username {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .referral-status {
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .referral-status.subscribed {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .referral-status.not-subscribed {
+            background: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
@@ -227,6 +299,15 @@
                 <strong>🔗 Ваша реферальная ссылка</strong>
                 <div class="referral-link" id="referralLink">Загрузка...</div>
                 <button class="copy-btn" onclick="copyLink()">📋 Копировать ссылку</button>
+            </div>
+
+            <div class="info-box">
+                <strong>👥 Ваши рефералы</strong>
+                <div class="referral-list" id="referralList">
+                    <p style="text-align: center; color: #999; padding: 20px;" id="noReferrals">
+                        Пока нет приглашенных друзей
+                    </p>
+                </div>
             </div>
 
             <div class="info-box">
@@ -310,6 +391,50 @@
             if (referralData.userId) {
                 referralLink.textContent = generateReferralLink(referralData.userId);
             }
+            
+            // Обновляем список рефералов
+            if (data.referralsList) {
+                displayReferralsList(data.referralsList);
+            }
+        }
+        
+        // Отображение списка рефералов
+        function displayReferralsList(referralsList) {
+            const referralListDiv = document.getElementById('referralList');
+            const noReferrals = document.getElementById('noReferrals');
+            
+            if (!referralsList || referralsList.length === 0) {
+                noReferrals.style.display = 'block';
+                return;
+            }
+            
+            noReferrals.style.display = 'none';
+            
+            // Очищаем старый список
+            referralListDiv.innerHTML = '';
+            
+            referralsList.forEach((referral, index) => {
+                const item = document.createElement('div');
+                item.className = 'referral-item';
+                
+                // Создаем аватар с первой буквой имени
+                const avatarLetter = referral.first_name ? referral.first_name.charAt(0).toUpperCase() : '?';
+                
+                item.innerHTML = `
+                    <div class="referral-info">
+                        <div class="referral-avatar">${avatarLetter}</div>
+                        <div class="referral-details">
+                            <div class="referral-name">${referral.first_name || 'Пользователь'}</div>
+                            ${referral.username ? `<div class="referral-username">@${referral.username}</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="referral-status ${referral.subscribed ? 'subscribed' : 'not-subscribed'}">
+                        ${referral.subscribed ? '✅ Подписан' : '⏳ Не подписан'}
+                    </div>
+                `;
+                
+                referralListDiv.appendChild(item);
+            });
         }
 
         // Копирование ссылки
@@ -357,17 +482,36 @@
                 // Пытаемся получить данные из localStorage
                 let referralsCount = parseInt(localStorage.getItem('referralsCount') || '0');
                 
+                // Загружаем список рефералов из localStorage
+                let referralsList = JSON.parse(localStorage.getItem('referralsList') || '[]');
+                
                 // Если данных нет, используем демо данные на основе ID
                 if (!referralsCount && referralData.userId) {
                     // Симулируем случайное количество рефералов для демо (0-3)
                     referralsCount = referralData.userId % 4;
                     localStorage.setItem('referralsCount', referralsCount.toString());
+                    
+                    // Создаем демо-список рефералов
+                    referralsList = [];
+                    for (let i = 0; i < referralsCount; i++) {
+                        referralsList.push({
+                            user_id: referralData.userId + i * 1000,
+                            first_name: `Друг ${i + 1}`,
+                            username: `friend${i + 1}`,
+                            subscribed: true,
+                            created_at: new Date().toISOString()
+                        });
+                    }
+                    localStorage.setItem('referralsList', JSON.stringify(referralsList));
                 }
                 
-                updateUI({ referralsCount: referralsCount });
+                updateUI({ 
+                    referralsCount: referralsCount,
+                    referralsList: referralsList
+                });
             } catch (error) {
                 console.error('Ошибка загрузки данных:', error);
-                updateUI({ referralsCount: 0 });
+                updateUI({ referralsCount: 0, referralsList: [] });
             }
         }
 
@@ -386,5 +530,4 @@
     </script>
 </body>
 </html>
-
 
