@@ -476,35 +476,59 @@
             }
         }
 
-        // Загружаем данные из localStorage или демо данные
+        // Загружаем данные из URL или localStorage
         async function loadData() {
             try {
-                // Пытаемся получить данные из localStorage
-                let referralsCount = parseInt(localStorage.getItem('referralsCount') || '0');
+                // Сначала пытаемся получить данные из URL параметров (от бота)
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlCount = urlParams.get('count');
+                const urlReferrals = urlParams.get('referrals');
                 
-                // Загружаем список рефералов из localStorage
-                let referralsList = JSON.parse(localStorage.getItem('referralsList') || '[]');
+                let referralsCount = 0;
+                let referralsList = [];
                 
-                // Если данных нет, используем демо данные на основе ID
-                if (!referralsCount && referralData.userId) {
-                    // Симулируем случайное количество рефералов для демо (0-3)
-                    referralsCount = referralData.userId % 4;
-                    localStorage.setItem('referralsCount', referralsCount.toString());
-                    
-                    // Создаем демо-список рефералов
-                    referralsList = [];
-                    for (let i = 0; i < referralsCount; i++) {
-                        referralsList.push({
-                            user_id: referralData.userId + i * 1000,
-                            first_name: `Друг ${i + 1}`,
-                            username: `friend${i + 1}`,
-                            subscribed: true,
-                            created_at: new Date().toISOString()
-                        });
+                if (urlCount !== null && urlReferrals !== null) {
+                    // Данные передаются от бота через URL
+                    console.log('Получены данные из URL:', urlCount, urlReferrals.substring(0, 100));
+                    referralsCount = parseInt(urlCount) || 0;
+                    try {
+                        referralsList = JSON.parse(decodeURIComponent(urlReferrals));
+                        console.log('Распарсено рефералов:', referralsList.length);
+                    } catch (e) {
+                        console.error('Ошибка парсинга JSON:', e);
+                        referralsList = [];
                     }
+                    
+                    // Сохраняем в localStorage для использования при обновлении
+                    localStorage.setItem('referralsCount', referralsCount.toString());
                     localStorage.setItem('referralsList', JSON.stringify(referralsList));
+                } else {
+                    console.log('Нет данных в URL, используем localStorage');
+                    // Fallback: используем localStorage
+                    referralsCount = parseInt(localStorage.getItem('referralsCount') || '0');
+                    referralsList = JSON.parse(localStorage.getItem('referralsList') || '[]');
+                    
+                    // Если данных нет, используем демо данные
+                    if (!referralsCount && referralData.userId) {
+                        console.log('Используем демо данные');
+                        referralsCount = referralData.userId % 4;
+                        localStorage.setItem('referralsCount', referralsCount.toString());
+                        
+                        referralsList = [];
+                        for (let i = 0; i < referralsCount; i++) {
+                            referralsList.push({
+                                user_id: referralData.userId + i * 1000,
+                                first_name: `Друг ${i + 1}`,
+                                username: `friend${i + 1}`,
+                                subscribed: true,
+                                created_at: new Date().toISOString()
+                            });
+                        }
+                        localStorage.setItem('referralsList', JSON.stringify(referralsList));
+                    }
                 }
                 
+                console.log('Обновляем UI с данными:', referralsCount, 'рефералов');
                 updateUI({ 
                     referralsCount: referralsCount,
                     referralsList: referralsList
@@ -515,7 +539,7 @@
             }
         }
 
-        // Обновление данных каждые 30 секунд (симуляция получения обновлений от бота)
+        // Обновление данных каждые 30 секунд
         setInterval(loadData, 30000);
 
         // Инициализация
